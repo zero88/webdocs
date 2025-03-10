@@ -309,11 +309,103 @@
 <div class="sect1">
 <h2 id="_flow"><a class="anchor" href="#_flow"></a>Flow</h2>
 <div class="sectionbody">
-<div class="imageblock kroki">
+<div class="literalblock kroki-error">
+<div class="title">How scheduler.x works</div>
 <div class="content">
-<object type="image/svg+xml" data="_images/how-it-works-c26c8a5514c8a8944961b7cf9d5167eba5acc603.svg"><span class="alt">How scheduler.x works</span></object>
+<pre>@startuml
+'https://plantuml.com/sequence-diagram
+skinparam ParticipantPadding 30
+skinparam BoxPadding 10
+skinparam backgroundColor #EEEBDC
+skinparam handwritten true
+
+skinparam sequence {
+    LifeLineBackgroundColor #ddd7ba
+
+    ParticipantBorderColor DeepSkyBlue
+    ParticipantBackgroundColor DodgerBlue
+    ParticipantFontName Impact
+    ParticipantFontSize 17
+    ParticipantFontColor #A9DCDF
+}
+
+actor       dev
+box "Vert.x event-loop threads" #LightYellow
+participant "Scheduler.x" as scheduler
+participant "Vertx Timer" as timer
+end box
+
+box "Scheduler.x threads" #dce8ee
+collections "Worker threads" as worker
+collections "Monitor threads" as monitor
+end box
+participant "External system" as extSys
+extSys++
+
+== Initialization ==
+dev -&gt; scheduler++: Build an instance \nwith trigger and job
+dev -&gt; scheduler: Start scheduler
+
+scheduler -&gt; timer++: register timer
+alt #Lightblue trigger is scheduled
+    timer --&gt; scheduler++#466ede: success
+    scheduler -&gt; monitor++#466ede: notify trigger \n**is scheduled** event
+    monitor -&gt; extSys--: publish **scheduled** result
+    scheduler--
+else #ffe9f0 trigger is unable to scheduled
+    timer --&gt; scheduler++#f00: error
+    scheduler -&gt; monitor++#f00: notify trigger \n**is unscheduled** event
+    monitor -&gt; extSys--: publish **unscheduled** result
+    scheduler--
+end alt
+
+||10||
+== Scheduling Loop ==
+
+loop
+timer -&gt; scheduler++#fbb: tick timing event
+scheduler -&gt; worker++: send trigger \nevaluation event
+||5||
+...evaluating trigger condition...
+    alt #Lightblue trigger is READY
+        worker --&gt; scheduler++#5D935D: accepted
+        worker++#5D935D
+        worker--
+        scheduler -&gt; worker++#5D935D: send execution event
+        ||5||
+        ...executing the job...
+        worker --&gt; scheduler--: returns job result
+        scheduler -&gt; monitor++#5D935D: notify trigger \n**round is finished** event
+        monitor -&gt; extSys--: publish **job** result
+        scheduler--
+    else #ffe9f0 trigger is unable to run
+        worker --&gt; scheduler ++#gold: refused
+        worker++#gold
+        worker--
+        scheduler -&gt; monitor++#gold: notify trigger \n**tick is misfired** event
+        monitor -&gt; extSys--: publish **misfire** result
+        scheduler--
+    end alt
+    worker--
+    scheduler--
+||5||
+end group
+
+||10||
+== Shutdown ==
+dev -&gt; scheduler++#466ede: Cancel scheduler
+scheduler -&gt; timer++#466ede: unregister timer
+return
+timer--
+scheduler -&gt; monitor++#466ede: notify trigger \n**is completed** event
+monitor -&gt; extSys--: publish **complete** result
+scheduler--
+
+||5||
+scheduler--
+extSys--
+@enduml</pre>
 </div>
-<div class="title">Figure 1. How scheduler.x works</div>
 </div>
 </div>
 </div>
