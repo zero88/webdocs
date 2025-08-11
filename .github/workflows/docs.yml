@@ -18,7 +18,7 @@ jobs:
           node-version: '20'
 
       - name: Checkout webdocs
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: webdocs
 
@@ -30,7 +30,7 @@ jobs:
           yarn antora --fetch antora-playbook.yml --stacktrace
 
       - name: Checkout jooqx
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: zero88/jooqx
           ref: gh-pages
