@@ -37,7 +37,7 @@ jobs:
           passphrase: ${{ secrets.CI_GPG_PASSPHARSE }}
           workdir: gh-pages
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
 
